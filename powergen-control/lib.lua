@@ -97,10 +97,41 @@ lib.parse_battery_sensor_information = function (sensor_information)
   }
 end
 
-lib.get_sensor_information = function (batteries)
+lib.get_sensor_information = function (proxies, parser)
   local raw_sensor_information = table.vmap(batteries, function(v) return v.getSensorInformation() end)
-  local sensor_information = table.vmap(raw_sensor_information, lib.parse_battery_sensor_information)
+  local sensor_information = table.vmap(raw_sensor_information, parser)
   return sensor_information
+end
+
+lib.parse_generator_sensor_information = function (sensor_information)
+  local function parse_number(s)
+    s = string.gsub(s, ",", "")
+    return tonumber(s)
+  end
+
+  local name = string.match(sensor_information[1], "§9([%a]-)§r")
+  local energy = parse_number(string.match(sensor_information[2], "§a([%d,]-)§r"))
+  local max_energy = parse_number(string.match(sensor_information[2], "§e([%d,]-)§r"))
+  local maintenance = string.match(sensor_information[3], "§a([%a]-)§r")
+  local output = parse_number(string.match(sensor_information[4], "§c([%d,]-)§r"))
+  local consumption = parse_number(string.match(sensor_information[5], "§e([%d,]-)§r"))
+  local fuel_value = parse_number(string.match(sensor_information[6], "§e([%d,]-)§r"))
+  local fuel_remaining = parse_number(string.match(sensor_information[7], "§6([%d,]-)§r"))
+  local efficiency = parse_number(string.match(sensor_information[8], "§e([%d,]-)§e"))
+  local pollution = parse_number(string.match(sensor_information[9], "§a([%d,]-)§r"))
+  
+  return {
+    name = name,
+    energy = energy,
+    max_energy = max_energy,
+    maintenance = not maintenance == "No Maintenance issues",
+    output = output,
+    consumption = consumption,
+    fuel_value = fuel_value,
+    fuel_remaining = fuel_remaining,
+    efficiency = efficiency,
+    pollution = pollution
+  }
 end
 
 return lib
