@@ -98,7 +98,7 @@ lib.parse_battery_sensor_information = function (sensor_information)
 end
 
 lib.get_sensor_information = function (proxies, parser)
-  local raw_sensor_information = table.vmap(batteries, function(v) return v.getSensorInformation() end)
+  local raw_sensor_information = table.vmap(proxies, function(v) return v.getSensorInformation() end)
   local sensor_information = table.vmap(raw_sensor_information, parser)
   return sensor_information
 end
@@ -117,9 +117,9 @@ lib.parse_generator_sensor_information = function (sensor_information)
   local consumption = parse_number(string.match(sensor_information[5], "§e([%d,]-)§r"))
   local fuel_value = parse_number(string.match(sensor_information[6], "§e([%d,]-)§r"))
   local fuel_remaining = parse_number(string.match(sensor_information[7], "§6([%d,]-)§r"))
-  local efficiency = parse_number(string.match(sensor_information[8], "§e([%d,]-)§e"))
+  local efficiency = parse_number(string.match(sensor_information[8], "§e([%d,.]-)§e"))
   local pollution = parse_number(string.match(sensor_information[9], "§a([%d,]-)§r"))
-  
+
   return {
     name = name,
     energy = energy,
