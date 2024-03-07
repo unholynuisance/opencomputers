@@ -7,6 +7,14 @@ local serialization = require("serialization")
 local generators = lib.get_proxies("gt_machine")
 local batteries = lib.get_proxies("gt_batterybuffer")
 
+local get_grid_info = function (path)
+  local file = io.open(path)
+  local grid_info = serialization.unserialize(file.read(file, "*a"))
+  return grid_info
+end
+
+local grid_info = get_grid_info("/etc/grid_info")
+
 while true do
   os.sleep(1)
 
@@ -16,10 +24,8 @@ while true do
 
   term.clear()
 
-  term.setCursor(1, 1)
   print(string.format("Average input: %d", average_input))
-  term.setCursor(1, 2)
   print(string.format("Average output: %d", average_output))
-  term.setCursor(1, 3)
   print(serialization.serialize(sensor_information))
+  print(serialization.serialize(grid_info))
 end
