@@ -1,18 +1,20 @@
 local component = require("component")
+local os = require("os")
+
 
 table.map = function (t, fn)
   local result = {}
-
+  
   for k, v in pairs(t) do
     k, v = fn(k, v)
     result[k] = v
   end
-
+  
   return result
 end
 
 table.kmap = function (t, fn)
-    return table.map(t, function (k, v) return fn(k), v end)
+  return table.map(t, function (k, v) return fn(k), v end)
 end
 
 table.vmap = function (t, fn)
@@ -21,11 +23,11 @@ end
 
 table.reduce = function (t, fn, init)
   local acc = init
-
+  
   for k, v in pairs(t) do
-      acc = acc + fn(acc, k, v)
+    acc = acc + fn(acc, k, v)
   end
-
+  
   return acc
 end
 
@@ -43,25 +45,33 @@ end
 
 table.keys = function(t)
   local result = {}
-
+  
   for k, _ in pairs(t) do
     result[#result+1] = k
   end
-
+  
   return result
 end
 
 table.values = function(t)
   local result = {}
-
+  
   for _, v in pairs(t) do
     result[#result+1] = v
   end
-
+  
   return result
 end
 
 local lib = {}
+
+lib.get_time_ticks = function ()
+  return os.time(os.date("!*t")) * 1000/60/60 - 6000
+end
+
+lib.get_time_seconds = function ()
+  return lib.get_time_ticks() / 20
+end
 
 lib.get_proxies = function (filter)
   local components = table.keys(component.list(filter))
@@ -82,7 +92,7 @@ lib.parse_battery_sensor_information = function (sensor_information)
     return tonumber(s)
   end
 
-  local name = string.match(sensor_information[1], "§9([%a]-)§r")
+  local name = string.match(sensor_information[1], "§9(.-)§r")
   local energy = parse_number(string.match(sensor_information[3], "§a([%d,]-)§r"))
   local max_energy = parse_number(string.match(sensor_information[3], "§e([%d,]-)§r"))
   local average_input = parse_number(string.match(sensor_information[5], "([%d,]-) EU/t"))
@@ -109,7 +119,7 @@ lib.parse_generator_sensor_information = function (sensor_information)
     return tonumber(s)
   end
 
-  local name = string.match(sensor_information[1], "§9([%a]-)§r")
+  local name = string.match(sensor_information[1], "§9(.-)§r")
   local energy = parse_number(string.match(sensor_information[2], "§a([%d,]-)§r"))
   local max_energy = parse_number(string.match(sensor_information[2], "§e([%d,]-)§r"))
   local maintenance = string.match(sensor_information[3], "§a([%a]-)§r")
