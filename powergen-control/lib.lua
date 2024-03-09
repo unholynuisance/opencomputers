@@ -1,5 +1,18 @@
 local component = require("component")
 local os = require("os")
+local thread = require("thread")
+
+table.map_thread = function(t, fn)
+    local result = {}
+    local threads = {}
+
+    for k, v in pairs(t) do
+        k, v = fn(k, v)
+        result[k] = v
+    end
+
+    return result
+end
 
 table.map = function(t, fn)
     local result = {}
