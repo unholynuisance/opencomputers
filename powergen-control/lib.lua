@@ -96,12 +96,12 @@ lib.thread_map = function(e, t, fn)
     return table.thread_map(e, t, fn)
 end
 
-lib.get_time_ticks = function()
-    return os.time(os.date("!*t")) * 1000 / 60 / 60 - 6000
+lib.get_ticks = function()
+    return math.floor(os.time(os.date("!*t")) * 1000 / 60 / 60 - 6000)
 end
 
-lib.get_time_seconds = function()
-    return lib.get_time_ticks() / 20
+lib.get_seconds = function()
+    return math.floor(lib.get_ticks() / 20)
 end
 
 lib.get_proxies = function(filter)

@@ -13,7 +13,7 @@ end
 
 local result = table.thread_map(generators, function(key, generator)
     local active = generator.isMachineActive()
-    local prev_time = lib.get_time_seconds() + 3
+    local prev_time = lib.get_seconds() + 3
     ---if not active do
     ---  generator.setWorkAllowed(true)
     ---end
@@ -22,7 +22,7 @@ local result = table.thread_map(generators, function(key, generator)
     os.sleep()
 
     while true do
-        local now = lib.get_time_seconds()
+        local now = lib.get_seconds()
         local eff_now = get_gen_data(generator).efficiency
         if prev_time + 5 >= now and eff_prev == eff_now then
             break
