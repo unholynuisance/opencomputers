@@ -183,4 +183,16 @@ lib.parse_generator_sensor_information = function(sensor_information)
     }
 end
 
+lib.get_generator_sensor_information = function(proxy)
+    return lib.get_sensor_information(proxy, lib.parse_generator_sensor_information)
+end
+
+lib.get_batteries_sensor_information = function(proxies)
+    return lib.get_sensors_information(proxies, lib.parse_generator_sensor_information)
+end
+
+lib.get_generators_sensor_information = function(proxies)
+    return lib.get_sensors_information(proxies, lib.parse_generator_sensor_information)
+end
+
 return lib
