@@ -142,12 +142,14 @@ lib.parse_battery_sensor_information = function(sensor_information)
     }
 end
 
-lib.get_sensor_information = function(proxies, parser)
-    local raw_sensor_information = table.vmap(proxies, function(v)
-        return v.getSensorInformation()
+lib.get_sensor_information = function(proxy, parser)
+    return parser(proxy.getSensorInformation())
+end
+
+lib.get_sensors_information = function(proxies, parser)
+    return table.vmap(proxies, function(v)
+        return lib.get_sensor_information(v, parser)
     end)
-    local sensor_information = table.vmap(raw_sensor_information, parser)
-    return sensor_information
 end
 
 lib.parse_generator_sensor_information = function(sensor_information)
