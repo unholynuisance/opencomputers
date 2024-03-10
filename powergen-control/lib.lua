@@ -1,16 +1,21 @@
 local component = require("component")
 local os = require("os")
 local thread = require("thread")
+local event = require("event")
 
-table.map_thread = function(t, fn)
+table.thread_map = function(t, fn)
     local result = {}
     local threads = {}
 
     for k, v in pairs(t) do
-        k, v = fn(k, v)
-        result[k] = v
-    end
+        local thr = thread.create(function(res, k, v)
+            local fn_k, fn_v = fn(k, v)
+            res[fn_k] = fn_v
+        end, result, k, v)
 
+        threads[#threads + 1] = thr
+    end
+    thread.waitForAll(threads)
     return result
 end
 
@@ -86,6 +91,10 @@ table.values = function(t)
 end
 
 local lib = {}
+
+lib.thread_map = function(e, t, fn)
+    return table.thread_map(e, t, fn)
+end
 
 lib.get_time_ticks = function()
     return os.time(os.date("!*t")) * 1000 / 60 / 60 - 6000

@@ -1,0 +1,6 @@
+{
+    "Lua.diagnostics.globals": [
+        "result",
+        "thread_map_result"
+    ]
+}
