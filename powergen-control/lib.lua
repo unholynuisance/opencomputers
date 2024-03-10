@@ -96,12 +96,12 @@ lib.thread_map = function(e, t, fn)
     return table.thread_map(e, t, fn)
 end
 
-lib.get_time_ticks = function()
-    return os.time(os.date("!*t")) * 1000 / 60 / 60 - 6000
+lib.get_ticks = function()
+    return math.floor(os.time(os.date("!*t")) * 1000 / 60 / 60 - 6000)
 end
 
-lib.get_time_seconds = function()
-    return lib.get_time_ticks() / 20
+lib.get_seconds = function()
+    return math.floor(lib.get_ticks() / 20)
 end
 
 lib.get_proxies = function(filter)
@@ -142,12 +142,14 @@ lib.parse_battery_sensor_information = function(sensor_information)
     }
 end
 
-lib.get_sensor_information = function(proxies, parser)
-    local raw_sensor_information = table.vmap(proxies, function(v)
-        return v.getSensorInformation()
+lib.get_sensor_information = function(proxy, parser)
+    return parser(proxy.getSensorInformation())
+end
+
+lib.get_sensors_information = function(proxies, parser)
+    return table.vmap(proxies, function(v)
+        return lib.get_sensor_information(v, parser)
     end)
-    local sensor_information = table.vmap(raw_sensor_information, parser)
-    return sensor_information
 end
 
 lib.parse_generator_sensor_information = function(sensor_information)
@@ -179,6 +181,39 @@ lib.parse_generator_sensor_information = function(sensor_information)
         efficiency = efficiency,
         pollution = pollution,
     }
+end
+
+lib.get_generator_sensor_information = function(proxy)
+    return lib.get_sensor_information(proxy, lib.parse_generator_sensor_information)
+end
+
+lib.get_batteries_sensor_information = function(proxies)
+    return lib.get_sensors_information(proxies, lib.parse_generator_sensor_information)
+end
+
+lib.get_generators_sensor_information = function(proxies)
+    return lib.get_sensors_information(proxies, lib.parse_generator_sensor_information)
+end
+
+lib.wait_for_stable_efficiency = function(generator, timeout)
+    local start_time = lib.get_seconds()
+
+    local last_efficiency = lib.get_generator_sensor_information(generator).efficiency
+    local last_efficiency_change_time = lib.get_ticks()
+
+    repeat
+        os.sleep(0)
+
+        local current_efficiency = lib.get_generator_sensor_information(generator).efficiency
+        local current_time = lib.get_ticks()
+
+        if current_efficiency ~= last_efficiency then
+            last_efficiency = current_efficiency
+            last_efficiency_change_time = current_time
+        end
+    until current_time - last_efficiency_change_time > timeout
+
+    return last_efficiency_change_time - start_time
 end
 
 return lib
