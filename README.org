@@ -1,0 +1,23 @@
+#+title: Unholy Nuisance - OpenComputers
+
+This is a collection of programs written for GT New Horizons modpack.
+
+* Installation
+To install a package, use =oppm=:
+#+begin_src sh
+oppm register unholynuisance/opencomputers
+oppm install ${PACKAGE_NAME}
+#+end_src
+
+To update:
+#+begin_src sh
+oppm update ${PACKAGE_NAME}
+#+end_src
+
+To install a test version:
+#+begin_src sh
+oppm install ${PACKAGE_NAME}:test
+#+end_src
+
+Available packages:
+1. =powergen-control=
