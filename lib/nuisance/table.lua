@@ -1,15 +1,16 @@
 local thread = require("thread")
 
 table.parallel_map = function(t, fn)
-    local worker = function (result, k, v)
+    local result = {}
+
+    local worker = function(k, v)
         k, v = fn(k, v)
         result[k] = v
     end
 
-    local result = {}
-    local threads = table.map(t, function(k, v)
-        return thread.create(worker, result, k, v)
-    end)
+    local threads = table.values(table.map(t, function(k, v)
+        return k, thread.create(worker, k, v)
+    end))
 
     thread.waitForAll(threads)
     return result
@@ -50,11 +51,33 @@ table.vmap = function(t, fn)
     end)
 end
 
+table.filter = function(t, fn)
+    return table.map(t, function(k, v)
+        if fn(k, v) then
+            return k, v
+        else
+            return k, nil
+        end
+    end)
+end
+
+table.kfilter = function(t, fn)
+    return table.filter(t, function(k, _)
+        return fn(k)
+    end)
+end
+
+table.vfilter = function(t, fn)
+    return table.filter(t, function(_, v)
+        return fn(v)
+    end)
+end
+
 table.reduce = function(t, fn, init)
     local acc = init
 
     for k, v in pairs(t) do
-        acc = acc + fn(acc, k, v)
+        acc = fn(acc, k, v)
     end
 
     return acc
@@ -76,6 +99,26 @@ table.vsum = function(t)
     return table.vreduce(t, function(acc, v)
         return acc + v
     end, 0)
+end
+
+table.min = function(t, comp)
+    return table.vreduce(t, function(acc, v)
+        if acc ~= nil and comp(acc, v) then
+            return acc
+        else
+            return v
+        end
+    end)
+end
+
+table.max = function(t, comp)
+    return table.vreduce(t, function(acc, v)
+        if acc ~= nil and comp(v, acc) then
+            return acc
+        else
+            return v
+        end
+    end)
 end
 
 table.keys = function(t)
