@@ -3,7 +3,7 @@ local serialization = require("serialization")
 
 local generators = lib.get_proxies("gt_machine")
 
-local result = table.thread_map(generators, function(key, generator)
+local result = table.parallel_vmap(generators, function(generator)
     local isWorkAllowed = generator.isWorkAllowed()
 
     generator.setWorkAllowed(true)
@@ -15,7 +15,7 @@ local result = table.thread_map(generators, function(key, generator)
 
     data["priority"] = 0
     data["address"] = generator.address
-    return key, data
+    return data
 end)
 
 local path = "/etc/grid_info"
