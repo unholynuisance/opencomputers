@@ -1,6 +1,4 @@
-local lib = require("lib")
-
-local component = require("component")
+local lib = require("nuisance.lib")
 local term = require("term")
 local serialization = require("serialization")
 

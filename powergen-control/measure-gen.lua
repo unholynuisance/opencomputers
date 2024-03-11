@@ -1,4 +1,5 @@
-local lib = require("lib")
+local table = require("nuisance.table")
+local lib = require("nuisance.lib")
 local serialization = require("serialization")
 
 local generators = lib.get_proxies("gt_machine")
