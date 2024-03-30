@@ -116,7 +116,7 @@ lib.get_generators_sensor_information = function(proxies)
 end
 
 lib.wait_for_stable_efficiency = function(generator, timeout)
-    local start_time = lib.get_seconds()
+    local start_time = lib.get_ticks()
 
     local last_efficiency = lib.get_generator_sensor_information(generator).efficiency
     local last_efficiency_change_time = lib.get_ticks()
