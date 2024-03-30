@@ -10,9 +10,10 @@
       in {
         devShells = {
           default = pkgs.mkShell {
-            packages = [
-              pkgs.lua # #
-              pkgs.lua-language-server # #
+            packages = with pkgs; [ # #
+              lua
+              lua-language-server
+              stylua
             ];
           };
         };
