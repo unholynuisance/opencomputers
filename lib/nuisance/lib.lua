@@ -8,8 +8,20 @@ lib.get_ticks = function()
     return math.floor(os.time(os.date("!*t")) * 1000 / 60 / 60 - 6000)
 end
 
+lib.ticks_to_seconds = function(ticks)
+    return ticks / 20
+end
+
+lib.ticks_to_whole_seconds = function(ticks)
+    return math.floor(ticks)
+end
+
 lib.get_seconds = function()
-    return math.floor(lib.get_ticks() / 20)
+    return lib.ticks_to_seconds(lib.get_ticks())
+end
+
+lib.get_whole_seconds = function()
+    return lib.ticks_to_whole_seconds(lib.get_ticks())
 end
 
 lib.get_proxies = function(filter)
