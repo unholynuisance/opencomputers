@@ -79,6 +79,26 @@ table.vsum = function(t)
     end, 0)
 end
 
+table.min = function(t, comp)
+    return table.vreduce(t, function(acc, v)
+        if acc ~= nil and comp(acc, v) then
+            return acc
+        else
+            return v
+        end
+    end)
+end
+
+table.max = function(t, comp)
+    return table.vreduce(t, function(acc, v)
+        if acc ~= nil and comp(v, acc) then
+            return acc
+        else
+            return v
+        end
+    end)
+end
+
 table.keys = function(t)
     local result = {}
 
