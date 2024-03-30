@@ -1,15 +1,16 @@
 local thread = require("thread")
 
 table.parallel_map = function(t, fn)
-    local worker = function (result, k, v)
+    local result = {}
+
+    local worker = function(k, v)
         k, v = fn(k, v)
         result[k] = v
     end
 
-    local result = {}
-    local threads = table.map(t, function(k, v)
-        return thread.create(worker, result, k, v)
-    end)
+    local threads = table.values(table.map(t, function(k, v)
+        return k, thread.create(worker, k, v)
+    end))
 
     thread.waitForAll(threads)
     return result
@@ -54,7 +55,7 @@ table.reduce = function(t, fn, init)
     local acc = init
 
     for k, v in pairs(t) do
-        acc = acc + fn(acc, k, v)
+        acc = fn(acc, k, v)
     end
 
     return acc
