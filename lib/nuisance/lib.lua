@@ -66,12 +66,6 @@ lib.get_sensor_information = function(proxy, parser)
     return parser(proxy.getSensorInformation())
 end
 
-lib.get_sensors_information = function(proxies, parser)
-    return table.vmap(proxies, function(v)
-        return lib.get_sensor_information(v, parser)
-    end)
-end
-
 lib.parse_generator_sensor_information = function(sensor_information)
     local function parse_number(s)
         s = string.gsub(s, ",", "")
@@ -103,16 +97,12 @@ lib.parse_generator_sensor_information = function(sensor_information)
     }
 end
 
-lib.get_generator_sensor_information = function(proxy)
-    return lib.get_sensor_information(proxy, lib.parse_generator_sensor_information)
+lib.get_generator_sensor_information = function(generator)
+    return lib.get_sensor_information(generator, lib.parse_generator_sensor_information)
 end
 
-lib.get_batteries_sensor_information = function(proxies)
-    return lib.get_sensors_information(proxies, lib.parse_generator_sensor_information)
-end
-
-lib.get_generators_sensor_information = function(proxies)
-    return lib.get_sensors_information(proxies, lib.parse_generator_sensor_information)
+lib.get_battery_sensor_information = function(battery)
+    return lib.get_sensor_information(battery, lib.parse_battery_sensor_information)
 end
 
 lib.wait_for_stable_efficiency = function(generator, timeout)
@@ -133,7 +123,38 @@ lib.wait_for_stable_efficiency = function(generator, timeout)
         end
     until current_time - last_efficiency_change_time > timeout
 
-    return last_efficiency_change_time - start_time
+    return lib.ticks_to_seconds(last_efficiency_change_time - start_time)
+end
+
+lib.get_generator_information = function(generator)
+    local information = lib.get_generator_sensor_information(generator)
+
+    information.address = generator.address
+
+    return information
+end
+
+lib.get_generators_information = function(generators)
+    return table.map(generators, function(_, v)
+        return v.address, lib.get_generator_information(v)
+    end)
+end
+
+lib.get_battery_information = function(battery)
+    local information = lib.get_battery_sensor_information(battery)
+
+    information.address = battery.address
+    information.outputAmperage = battery.getOutputAmperage()
+    information.outputVoltage = battery.getOutputVoltage()
+    information.max_output = information.outputAmperage * information.outputVoltage
+
+    return information
+end
+
+lib.get_batteries_information = function(batteries)
+    return table.map(batteries, function(_, v)
+        return v.address, lib.get_battery_information(v)
+    end)
 end
 
 return lib
