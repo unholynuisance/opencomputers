@@ -51,6 +51,28 @@ table.vmap = function(t, fn)
     end)
 end
 
+table.filter = function(t, fn)
+    return table.map(t, function(k, v)
+        if fn(k, v) then
+            return k, v
+        else
+            return k, nil
+        end
+    end)
+end
+
+table.kfilter = function(t, fn)
+    return table.filter(t, function(k, _)
+        return fn(k)
+    end)
+end
+
+table.vfilter = function(t, fn)
+    return table.filter(t, function(_, v)
+        return fn(v)
+    end)
+end
+
 table.reduce = function(t, fn, init)
     local acc = init
 
