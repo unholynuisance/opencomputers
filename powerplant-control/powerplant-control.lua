@@ -55,6 +55,10 @@ local get_generator_to_disable = function(generators, generators_information)
     end)
 end
 
+local running_ema = function(s, x, alpha)
+    return (1 - alpha) * s + alpha * x
+end
+
 local main = function(config)
     local grid_information = get_grid_info("/etc/grid_information")
     grid_information.generators_information = table.vmap(grid_information.generators_information, function(v)
@@ -70,6 +74,8 @@ local main = function(config)
     event.listen("interrupted", function()
         should_stop = true
     end)
+
+    local average_delta = 0
 
     while not should_stop do
         os.sleep(0)
@@ -96,18 +102,21 @@ local main = function(config)
             (batteries_min_energy - batteries_energy) / max_energy_delta
         )
 
-        local energy_delta = batteries_input - batteries_output
+        local delta = batteries_input - batteries_output
+        average_delta = running_ema(average_delta, delta, config.smoothing_factor)
+
         local time_to_empty = lib.ticks_to_seconds( --
-            (batteries_min_energy - batteries_energy) / energy_delta
+            (batteries_min_energy - batteries_energy) / average_delta
         )
         local time_to_full = lib.ticks_to_seconds( --
-            (batteries_max_energy - batteries_energy) / energy_delta
+            (batteries_max_energy - batteries_energy) / average_delta
         )
 
         term.clear()
 
         print(string.format("Energy: %f", batteries_energy))
-        print(string.format("Energy delta: %f", energy_delta))
+        print(string.format("Delta: %f", delta))
+        print(string.format("Average: %f", average_delta))
         print(string.format("Time to full: %f", time_to_full))
         print(string.format("Time to empty: %f", time_to_empty))
 
@@ -121,7 +130,7 @@ local main = function(config)
             end
         end
 
-        if 0 <= time_to_full and time_to_full < config.min_time_to_full then
+        if 0 <= time_to_full and time_to_full < config.min_time_to_full and delta > 0 then
             local generator = get_generator_to_disable(generators, grid_information.generators_information)
             if generator ~= nil then
                 local generator_name = generators_information[generator.address].name
@@ -134,6 +143,7 @@ local main = function(config)
 end
 
 local config = {
+    smoothing_factor = 0.05,
     min_time_to_empty = 120,
     min_time_to_full = 10,
 }
