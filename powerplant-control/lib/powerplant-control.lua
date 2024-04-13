@@ -188,45 +188,56 @@ local display_th_f = function(context)
     end
 end
 
-local context = {
-    should_stop = false,
-}
+local Controller = {}
+Controller.create = function()
+    local self = {}
 
-local start = function()
-    context.config = {
+    self.should_stop = false
+
+    self.start = Controller.start
+    self.stop = Controller.stop
+    self.wait = Controller.wait
+    self.stop_on = Controller.stop_on
+
+    return self
+end
+
+Controller.start = function(self)
+    self.config = {
         smoothing_factor = 0.05,
         min_time_to_empty = 120,
         min_time_to_full = 10,
     }
 
-    context.grid_information = get_grid_info("/etc/grid_information")
-    context.grid_information.generators_information = table.vmap(
-        context.grid_information.generators_information,
-        function(v)
-            v.ramp_rate = v.output / v.ramp_time
-            return v
-        end
-    )
+    self.grid_information = get_grid_info("/etc/grid_information")
+    self.grid_information.generators_information = table.vmap(self.grid_information.generators_information, function(v)
+        v.ramp_rate = v.output / v.ramp_time
+        return v
+    end)
 
-    context.generators = lib.get_proxies("gt_machine")
-    context.batteries = lib.get_proxies("gt_batterybuffer")
+    self.generators = lib.get_proxies("gt_machine")
+    self.batteries = lib.get_proxies("gt_batterybuffer")
 
-    context.threads = {
-        monitor_th = thread.create(monitor_th_f, context),
-        control_th = thread.create(control_th_f, context),
-        display_th = thread.create(display_th_f, context),
+    self.threads = {
+        monitor_th = thread.create(monitor_th_f, self),
+        control_th = thread.create(control_th_f, self),
+        display_th = thread.create(display_th_f, self),
     }
-
-    thread.waitForAll(table.values(context.threads))
 end
 
-local stop = function()
-    context.should_stop = true
+Controller.stop = function(self)
+    self.should_stop = true
+    self:wait()
 end
 
-local main = function()
-    event.listen("interrupted", stop)
-    start()
+Controller.wait = function(self)
+    thread.waitForAll(table.values(self.threads))
 end
 
-main()
+Controller.stop_on = function(self, e)
+    event.listen(e, function()
+        self:stop()
+    end)
+end
+
+return Controller
