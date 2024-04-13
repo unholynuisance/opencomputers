@@ -124,7 +124,7 @@ local main = function(config)
             local generator = get_generator_to_enable(generators, grid_information.generators_information)
             if generator ~= nil then
                 local generator_name = generators_information[generator.address].name
-                print(string.format("Stopping generator %s", generator_name))
+                print(string.format("Starting %s", generator_name))
                 generator.setWorkAllowed(true)
                 lib.wait_for_stable_efficiency(generator, 20)
             end
@@ -134,7 +134,7 @@ local main = function(config)
             local generator = get_generator_to_disable(generators, grid_information.generators_information)
             if generator ~= nil then
                 local generator_name = generators_information[generator.address].name
-                print(string.format("Stopping generator %s", generator_name))
+                print(string.format("Stopping %s", generator_name))
                 generator.setWorkAllowed(false)
                 lib.wait_for_stable_efficiency(generator, 20)
             end
