@@ -150,6 +150,7 @@ local control_th_f = function(context)
 end
 
 local display_th_f = function(context)
+    local generators = context.generators
     while not context.should_stop do
         os.sleep(0)
 
@@ -159,17 +160,29 @@ local display_th_f = function(context)
 
         term.clear()
 
+        local generators_information = context.generators_information
         local stats = context.stats
 
+        print("Stats:")
         print(string.format("Energy: %f", stats.batteries_energy))
         print(string.format("Delta: %f", stats.delta))
         print(string.format("Average: %f", stats.average_delta))
         print(string.format("Time to full: %f", stats.time_to_full))
         print(string.format("Time to empty: %f", stats.time_to_empty))
 
-        if context.control_th_message ~= nil then
-            print(context.control_th_message)
+        print("")
+
+        print("Grid status:")
+        for i, generator in ipairs(generators) do
+            local generator_name = generators_information[generator.address].name
+            local generator_status = generator.isWorkAllowed() and "enabled" or "disabled"
+            print(string.format("%i. %s (%s)", i, generator_name, generator_status))
         end
+
+        print("")
+
+        print("Status:")
+        print(context.control_th_message or "Idle")
 
         ::continue::
     end
