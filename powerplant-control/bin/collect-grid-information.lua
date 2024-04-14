@@ -22,6 +22,7 @@ local generators_information = table.parallel_map(generators, function(_, genera
 
     data.priority = 0
     data.ramp_time = ramp_time
+    data.ramp_rate = data.output / data.ramp_time
     return generator.address, data
 end)
 
