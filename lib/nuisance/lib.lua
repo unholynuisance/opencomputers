@@ -2,7 +2,38 @@ local table = require("nuisance.table")
 local component = require("component")
 local os = require("os")
 
+local serialization = require("serialization")
+local filesystem = require("filesystem")
+
 local lib = {}
+
+lib.write_file = function(path, contents)
+    local file = io.open(path, "w")
+    return file and file:write(contents) or error("Could not open file for writing")
+end
+
+lib.read_file = function(path)
+    local file = io.open(path, "r")
+    return file and file:read("*a") or error("Could not open file for reading")
+end
+
+lib.write_config = function(config, filename, dir)
+    dir = dir or "/etc"
+
+    filesystem.makeDirectory(dir)
+
+    local path = filesystem.concat(dir, filename)
+    local contents = serialization.serialize(config)
+    return lib.write_file(path, contents)
+end
+
+lib.read_config = function(filename, dir)
+    dir = dir or "/etc"
+
+    local path = filesystem.concat(dir, filename)
+    local contents = lib.read_file(path)
+    return serialization.unserialize(contents)
+end
 
 lib.get_ticks = function()
     return math.floor(os.time(os.date("!*t")) * 1000 / 60 / 60 - 6000)
