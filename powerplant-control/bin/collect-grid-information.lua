@@ -1,6 +1,7 @@
 local table = require("nuisance.table")
 local lib = require("nuisance.lib")
 local serialization = require("serialization")
+local filesystem = require("filesystem")
 
 local generators = lib.get_proxies("gt_machine")
 
@@ -30,6 +31,11 @@ local grid_information = {
     generators_information = generators_information,
 }
 
-local path = "/etc/grid_information"
-local file = io.open(path, "w")
-file.write(file, serialization.serialize(grid_information))
+local path = "/var/lib/powerplant-control"
+filesystem.makeDirectory(path)
+
+local grid_information_path = filesystem.concat(path, "grid_information")
+local file = io.open(grid_information_path, "w")
+if file then
+    file:write(serialization.serialize(grid_information))
+end
