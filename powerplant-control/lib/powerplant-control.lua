@@ -18,6 +18,7 @@ Control.create = function(config)
     self.stop = Control.stop
     self.wait = Control.wait
     self.stop_on = Control.stop_on
+    self.detach = Control.detach
     self.collect_grid_information = Control.collect_grid_information
 
     self._monitor_th_f = Control._monitor_th_f
@@ -58,6 +59,12 @@ end
 
 Control.wait = function(self)
     thread.waitForAll(table.values(self.threads))
+end
+
+Control.detach = function(self)
+    table.vmap(self.threads, function(t)
+        t:detach()
+    end)
 end
 
 Control.collect_grid_information = function(self)

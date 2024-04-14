@@ -1,25 +1,17 @@
+local lib = require("nuisance.lib")
 local Control = require("powerplant-control")
 local Display = require("powerplant-display")
 
 local shell = require("shell")
-
 local args, opts = shell.parse(...)
 
-local control = Control.create({
-    data_dir = "/var/lib/powerplant-control",
-    smoothing_factor = 0.05,
-    min_time_to_empty = 120,
-    min_time_to_full = 10,
-    display_address = "localhost",
-    display_port = 999,
-    display_delay = 0.1,
-})
+local control_config = lib.read_config("powerplant-control.cfg")
+local control = Control.create(control_config)
 
-local display = Display.create({
-    port = 999,
-})
+local display_config = lib.read_config("powerplant-display.cfg")
+local display = Display.create(display_config)
 
-if opts["collect-grid-information"] or opts["c"] then
+if opts["collect-grid-information"] or opts["i"] then
     control:collect_grid_information()
 end
 

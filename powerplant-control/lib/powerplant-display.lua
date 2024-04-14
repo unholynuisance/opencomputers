@@ -17,6 +17,7 @@ Display.create = function(config)
     self.stop = Display.stop
     self.wait = Display.wait
     self.stop_on = Display.stop_on
+    self.detach = Display.detach
 
     self._monitor_th_f = Display._monitor_th_f
     self._display_th_f = Display._display_th_f
@@ -46,6 +47,12 @@ end
 
 Display.wait = function(self)
     thread.waitForAll(table.values(self.threads))
+end
+
+Display.detach = function(self)
+    table.vmap(self.threads, function(t)
+        t:detach()
+    end)
 end
 
 Display._monitor_th_f = function(self)
