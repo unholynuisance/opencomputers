@@ -18,12 +18,16 @@ Controller.create = function(config)
     self.stop = Controller.stop
     self.wait = Controller.wait
     self.stop_on = Controller.stop_on
+    self.collect_grid_information = Controller.collect_grid_information
 
     self._monitor_th_f = Controller._monitor_th_f
     self._control_th_f = Controller._control_th_f
     self._display_th_f = Controller._display_th_f
 
+    self._collect_grid_information = Controller._collect_grid_information
+    self._write_grid_information = Controller._write_grid_information
     self._read_grid_information = Controller._read_grid_information
+    self._get_proxies = Controller._get_proxies
     self._get_generator_to_enable = Controller._get_generator_to_enable
     self._get_generator_to_disable = Controller._get_generator_to_disable
     self._running_ema = Controller._running_ema
@@ -33,9 +37,7 @@ end
 
 Controller.start = function(self)
     self:_read_grid_information()
-
-    self.generators = lib.get_proxies("gt_machine")
-    self.batteries = lib.get_proxies("gt_batterybuffer")
+    self:_get_proxies()
 
     self.threads = {
         monitor_th = thread.create(self._monitor_th_f, self),
@@ -57,6 +59,12 @@ Controller.stop_on = function(self, e)
     event.listen(e, function()
         self:stop()
     end)
+end
+
+Controller.collect_grid_information = function(self)
+    self:_get_proxies()
+    self:_collect_grid_information()
+    self:_write_grid_information()
 end
 
 Controller._monitor_th_f = function(self)
@@ -178,6 +186,45 @@ Controller._display_th_f = function(self)
     end
 end
 
+Controller._collect_grid_information = function(self)
+    local generators_information = table.parallel_map(self.generators, function(_, generator)
+        local isWorkAllowed = generator.isWorkAllowed()
+
+        local timeout = 20
+
+        generator.setWorkAllowed(false)
+
+        lib.wait_for_stable_efficiency(generator, timeout)
+
+        generator.setWorkAllowed(true)
+
+        local ramp_time = lib.wait_for_stable_efficiency(generator, timeout)
+        local data = lib.get_generator_sensor_information(generator)
+
+        generator.setWorkAllowed(isWorkAllowed)
+
+        data.priority = 0
+        data.ramp_time = ramp_time
+        data.ramp_rate = data.output / data.ramp_time
+        return generator.address, data
+    end)
+
+    self.grid_information = {
+        generators_information = generators_information,
+    }
+end
+
+Controller._write_grid_information = function(self)
+    filesystem.makeDirectory(self.config.data_dir)
+
+    local path = filesystem.concat(self.config.data_dir, "grid_information")
+    local file = io.open(path, "w")
+
+    if file then
+        file:write(serialization.serialize(self.grid_information))
+    end
+end
+
 Controller._read_grid_information = function(self)
     local path = filesystem.concat(self.config.data_dir, "grid_information")
     local file = io.open(path, "r")
@@ -187,6 +234,11 @@ Controller._read_grid_information = function(self)
     end
 end
 
+Controller._get_proxies = function(self)
+    self.generators = lib.get_proxies("gt_machine")
+    self.batteries = lib.get_proxies("gt_batterybuffer")
+end
+
 Controller._get_generator_to_enable = function(self)
     local generators = table.vfilter(self.generators, function(v)
         return not v.isWorkAllowed()
@@ -194,8 +246,8 @@ Controller._get_generator_to_enable = function(self)
 
     -- return generator with max priority and max ramp_rate
     return table.max(generators, function(a, b)
-        local a_info = self.generators_information[a.address]
-        local b_info = self.generators_information[b.address]
+        local a_info = self.grid_information.generators_information[a.address]
+        local b_info = self.grid_information.generators_information[b.address]
 
         if a_info.priority < b_info.priority then
             return true
