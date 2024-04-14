@@ -5,72 +5,69 @@ local thread = require("thread")
 local event = require("event")
 local term = require("term")
 local serialization = require("serialization")
+local filesystem = require("filesystem")
 
-local get_grid_info = function(path)
-    local file = io.open(path)
-    local grid_info = serialization.unserialize(file.read(file, "*a"))
-    return grid_info
+local Controller = {}
+Controller.create = function(config)
+    local self = {}
+
+    self.config = config
+    self.should_stop = false
+
+    self.start = Controller.start
+    self.stop = Controller.stop
+    self.wait = Controller.wait
+    self.stop_on = Controller.stop_on
+
+    self._monitor_th_f = Controller._monitor_th_f
+    self._control_th_f = Controller._control_th_f
+    self._display_th_f = Controller._display_th_f
+
+    self._read_grid_information = Controller._read_grid_information
+    self._get_generator_to_enable = Controller._get_generator_to_enable
+    self._get_generator_to_disable = Controller._get_generator_to_disable
+    self._running_ema = Controller._running_ema
+
+    return self
 end
 
-local get_generator_to_enable = function(generators, generators_information)
-    generators = table.vfilter(generators, function(v)
-        return not v.isWorkAllowed()
-    end)
+Controller.start = function(self)
+    self:_read_grid_information()
 
-    -- return generator with max priority and max ramp_rate
-    return table.max(generators, function(a, b)
-        local a_info = generators_information[a.address]
-        local b_info = generators_information[b.address]
+    self.generators = lib.get_proxies("gt_machine")
+    self.batteries = lib.get_proxies("gt_batterybuffer")
 
-        if a_info.priority < b_info.priority then
-            return true
-        end
+    self.threads = {
+        monitor_th = thread.create(self._monitor_th_f, self),
+        control_th = thread.create(self._control_th_f, self),
+        display_th = thread.create(self._display_th_f, self),
+    }
+end
 
-        if a_info.ramp_rate < b_info.ramp_rate then
-            return true
-        end
+Controller.wait = function(self)
+    thread.waitForAll(table.values(self.threads))
+end
 
-        return false
+Controller.stop = function(self)
+    self.should_stop = true
+    self:wait()
+end
+
+Controller.stop_on = function(self, e)
+    event.listen(e, function()
+        self:stop()
     end)
 end
 
-local get_generator_to_disable = function(generators, generators_information)
-    generators = table.vfilter(generators, function(v)
-        return v.isWorkAllowed()
-    end)
-
-    -- return generator with min priority and max ramp_rate
-    return table.min(generators, function(a, b)
-        local a_info = generators_information[a.address]
-        local b_info = generators_information[b.address]
-
-        if a_info.priority < b_info.priority then
-            return true
-        end
-
-        if a_info.ramp_rate > b_info.ramp_rate then
-            return true
-        end
-
-        return false
-    end)
-end
-
-local running_ema = function(s, x, alpha)
-    return (1 - alpha) * s + alpha * x
-end
-
-local monitor_th_f = function(context)
-    local config = context.config
-
+Controller._monitor_th_f = function(self)
     local stats = {}
     stats.average_delta = 0
 
-    while not context.should_stop do
+    while not self.should_stop do
         os.sleep(0)
 
-        local generators_information = lib.get_generators_information(context.generators)
-        local batteries_information = lib.get_batteries_information(context.batteries)
+        local generators_information = lib.get_generators_information(self.generators)
+        local batteries_information = lib.get_batteries_information(self.batteries)
 
         local sum_over_field = function(t, field)
             return table.vsum(table.vmap(t, function(v)
@@ -92,7 +89,7 @@ local monitor_th_f = function(context)
         )
 
         stats.delta = stats.batteries_input - stats.batteries_output
-        stats.average_delta = running_ema(stats.average_delta, stats.delta, config.smoothing_factor)
+        stats.average_delta = self:_running_ema(stats.average_delta, stats.delta, self.config.smoothing_factor)
 
         stats.time_to_empty = lib.ticks_to_seconds( --
             (stats.batteries_min_energy - stats.batteries_energy) / stats.average_delta
@@ -102,44 +99,41 @@ local monitor_th_f = function(context)
             (stats.batteries_max_energy - stats.batteries_energy) / stats.average_delta
         )
 
-        context.generators_information = generators_information
-        context.batteries_information = batteries_information
-        context.stats = stats
+        self.generators_information = generators_information
+        self.batteries_information = batteries_information
+        self.stats = stats
     end
 end
 
-local control_th_f = function(context)
-    local config = context.config
-    local grid_information = context.grid_information
-    local generators = context.generators
-
-    while not context.should_stop do
+Controller._control_th_f = function(self)
+    while not self.should_stop do
         os.sleep(0)
 
-        if context.stats == nil then
+        if self.stats == nil then
             goto continue
         end
 
-        local generators_information = context.generators_information
-        local stats = context.stats
+        self.control_th_message = nil
 
-        context.control_th_message = nil
+        local tte_mo, min_tte_mo = self.stats.time_to_empty_at_max_output, self.config.min_time_to_empty
 
-        if 0 <= stats.time_to_empty_at_max_output and stats.time_to_empty_at_max_output < config.min_time_to_empty then
-            local generator = get_generator_to_enable(generators, grid_information.generators_information)
+        if 0 <= tte_mo and tte_mo < min_tte_mo then
+            local generator = self:_get_generator_to_enable()
             if generator ~= nil then
-                local generator_name = generators_information[generator.address].name
-                context.control_th_message = string.format("Starting %s", generator_name)
+                local generator_name = self.generators_information[generator.address].name
+                self.control_th_message = string.format("Starting %s", generator_name)
                 generator.setWorkAllowed(true)
                 lib.wait_for_stable_efficiency(generator, 20)
             end
         end
 
-        if 0 <= stats.time_to_full and stats.time_to_full < config.min_time_to_full and stats.average_delta > 0 then
-            local generator = get_generator_to_disable(generators, grid_information.generators_information)
+        local ttf, min_ttf = self.stats.time_to_full, self.config.min_time_to_full
+
+        if 0 <= ttf and ttf < min_ttf and self.stats.average_delta > 0 then
+            local generator = self:_get_generator_to_disable()
             if generator ~= nil then
-                local generator_name = generators_information[generator.address].name
-                context.control_th_message = string.format("Stopping %s", generator_name)
+                local generator_name = self.generators_information[generator.address].name
+                self.control_th_message = string.format("Stopping %s", generator_name)
                 generator.setWorkAllowed(false)
                 lib.wait_for_stable_efficiency(generator, 20)
             end
@@ -149,32 +143,28 @@ local control_th_f = function(context)
     end
 end
 
-local display_th_f = function(context)
-    local generators = context.generators
-    while not context.should_stop do
+Controller._display_th_f = function(self)
+    while not self.should_stop do
         os.sleep(0)
 
-        if context.stats == nil then
+        if self.stats == nil then
             goto continue
         end
 
         term.clear()
 
-        local generators_information = context.generators_information
-        local stats = context.stats
-
         print("Stats:")
-        print(string.format("Energy: %f", stats.batteries_energy))
-        print(string.format("Delta: %f", stats.delta))
-        print(string.format("Average: %f", stats.average_delta))
-        print(string.format("Time to full: %f", stats.time_to_full))
-        print(string.format("Time to empty: %f", stats.time_to_empty))
+        print(string.format("Energy: %f", self.stats.batteries_energy))
+        print(string.format("Delta: %f", self.stats.delta))
+        print(string.format("Average: %f", self.stats.average_delta))
+        print(string.format("Time to full: %f", self.stats.time_to_full))
+        print(string.format("Time to empty: %f", self.stats.time_to_empty))
 
         print("")
 
         print("Grid status:")
-        for i, generator in ipairs(generators) do
-            local generator_name = generators_information[generator.address].name
+        for i, generator in ipairs(self.generators) do
+            local generator_name = self.generators_information[generator.address].name
             local generator_status = generator.isWorkAllowed() and "enabled" or "disabled"
             print(string.format("%i. %s (%s)", i, generator_name, generator_status))
         end
@@ -182,62 +172,67 @@ local display_th_f = function(context)
         print("")
 
         print("Status:")
-        print(context.control_th_message or "Idle")
+        print(self.control_th_message or "Idle")
 
         ::continue::
     end
 end
 
-local Controller = {}
-Controller.create = function()
-    local self = {}
+Controller._read_grid_information = function(self)
+    local path = filesystem.concat(self.config.data_dir, "grid_information")
+    local file = io.open(path, "r")
 
-    self.should_stop = false
-
-    self.start = Controller.start
-    self.stop = Controller.stop
-    self.wait = Controller.wait
-    self.stop_on = Controller.stop_on
-
-    return self
+    if file then
+        self.grid_information = serialization.unserialize(file:read("*a"))
+    end
 end
 
-Controller.start = function(self)
-    self.config = {
-        smoothing_factor = 0.05,
-        min_time_to_empty = 120,
-        min_time_to_full = 10,
-    }
-
-    self.grid_information = get_grid_info("/etc/grid_information")
-    self.grid_information.generators_information = table.vmap(self.grid_information.generators_information, function(v)
-        v.ramp_rate = v.output / v.ramp_time
-        return v
+Controller._get_generator_to_enable = function(self)
+    local generators = table.vfilter(self.generators, function(v)
+        return not v.isWorkAllowed()
     end)
 
-    self.generators = lib.get_proxies("gt_machine")
-    self.batteries = lib.get_proxies("gt_batterybuffer")
+    -- return generator with max priority and max ramp_rate
+    return table.max(generators, function(a, b)
+        local a_info = self.generators_information[a.address]
+        local b_info = self.generators_information[b.address]
 
-    self.threads = {
-        monitor_th = thread.create(monitor_th_f, self),
-        control_th = thread.create(control_th_f, self),
-        display_th = thread.create(display_th_f, self),
-    }
-end
+        if a_info.priority < b_info.priority then
+            return true
+        end
 
-Controller.stop = function(self)
-    self.should_stop = true
-    self:wait()
-end
+        if a_info.ramp_rate < b_info.ramp_rate then
+            return true
+        end
 
-Controller.wait = function(self)
-    thread.waitForAll(table.values(self.threads))
-end
-
-Controller.stop_on = function(self, e)
-    event.listen(e, function()
-        self:stop()
+        return false
     end)
+end
+
+Controller._get_generator_to_disable = function(self)
+    local generators = table.vfilter(self.generators, function(v)
+        return v.isWorkAllowed()
+    end)
+
+    -- return generator with min priority and max ramp_rate
+    return table.min(generators, function(a, b)
+        local a_info = self.grid_information.generators_information[a.address]
+        local b_info = self.grid_information.generators_information[b.address]
+
+        if a_info.priority < b_info.priority then
+            return true
+        end
+
+        if a_info.ramp_rate > b_info.ramp_rate then
+            return true
+        end
+
+        return false
+    end)
+end
+
+Controller._running_ema = function(_, s, x, alpha)
+    return (1 - alpha) * s + alpha * x
 end
 
 return Controller
