@@ -105,6 +105,21 @@ lib.get_battery_sensor_information = function(battery)
     return lib.get_sensor_information(battery, lib.parse_battery_sensor_information)
 end
 
+lib.wait_for_zero_efficiency = function(generator)
+    local start_time = lib.get_ticks()
+    local current_time = start_time
+
+    repeat
+        os.sleep(0)
+
+        local current_efficiency = lib.get_generator_sensor_information(generator).efficiency
+        local current_time = lib.get_ticks()
+
+    until current_efficiency == 0
+
+    return lib.ticks_to_seconds(current_time - start_time)
+end
+
 lib.wait_for_stable_efficiency = function(generator, timeout)
     local start_time = lib.get_ticks()
 

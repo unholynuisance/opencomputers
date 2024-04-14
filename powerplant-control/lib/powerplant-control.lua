@@ -194,7 +194,7 @@ Controller._collect_grid_information = function(self)
 
         generator.setWorkAllowed(false)
 
-        lib.wait_for_stable_efficiency(generator, timeout)
+        lib.wait_for_zero_efficiency(generator)
 
         generator.setWorkAllowed(true)
 
