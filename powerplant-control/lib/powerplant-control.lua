@@ -46,19 +46,18 @@ Control.start = function(self)
     }
 end
 
-Control.wait = function(self)
-    thread.waitForAll(table.values(self.threads))
-end
-
 Control.stop = function(self)
     self.should_stop = true
-    self:wait()
 end
 
 Control.stop_on = function(self, e)
     event.listen(e, function()
         self:stop()
     end)
+end
+
+Control.wait = function(self)
+    thread.waitForAll(table.values(self.threads))
 end
 
 Control.collect_grid_information = function(self)

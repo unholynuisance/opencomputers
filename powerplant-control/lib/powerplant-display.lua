@@ -33,21 +33,19 @@ Display.start = function(self)
     }
 end
 
-Display.wait = function(self)
-    thread.waitForAll(table.values(self.threads))
-end
-
 Display.stop = function(self)
     udp.close(self.config.port)
     self.should_stop = true
-
-    self:wait()
 end
 
 Display.stop_on = function(self, e)
     event.listen(e, function()
         self:stop()
     end)
+end
+
+Display.wait = function(self)
+    thread.waitForAll(table.values(self.threads))
 end
 
 Display._monitor_th_f = function(self)
