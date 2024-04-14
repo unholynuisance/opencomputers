@@ -1,12 +1,11 @@
-local lib = require("nuisance.lib")
-local Controller = require("powerplant-control")
+local Control = require("powerplant-control")
 local Display = require("powerplant-display")
 
 local shell = require("shell")
 
 local args, opts = shell.parse(...)
 
-local controller = Controller.create({
+local control = Control.create({
     data_dir = "/var/lib/powerplant-control",
     smoothing_factor = 0.05,
     min_time_to_empty = 120,
@@ -21,14 +20,14 @@ local display = Display.create({
 })
 
 if opts["collect-grid-information"] or opts["c"] then
-    controller:collect_grid_information()
+    control:collect_grid_information()
 end
 
-controller:stop_on("interrupted")
+control:stop_on("interrupted")
 display:stop_on("interrupted")
 
-controller:start()
+control:start()
 display:start()
 
-controller:wait()
+control:wait()
 display:wait()

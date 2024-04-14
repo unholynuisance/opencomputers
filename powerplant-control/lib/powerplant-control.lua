@@ -7,35 +7,35 @@ local serialization = require("serialization")
 local filesystem = require("filesystem")
 local udp = require("network").udp
 
-local Controller = {}
-Controller.create = function(config)
+local Control = {}
+Control.create = function(config)
     local self = {}
 
     self.config = config
     self.should_stop = false
 
-    self.start = Controller.start
-    self.stop = Controller.stop
-    self.wait = Controller.wait
-    self.stop_on = Controller.stop_on
-    self.collect_grid_information = Controller.collect_grid_information
+    self.start = Control.start
+    self.stop = Control.stop
+    self.wait = Control.wait
+    self.stop_on = Control.stop_on
+    self.collect_grid_information = Control.collect_grid_information
 
-    self._monitor_th_f = Controller._monitor_th_f
-    self._control_th_f = Controller._control_th_f
-    self._display_th_f = Controller._display_th_f
+    self._monitor_th_f = Control._monitor_th_f
+    self._control_th_f = Control._control_th_f
+    self._display_th_f = Control._display_th_f
 
-    self._collect_grid_information = Controller._collect_grid_information
-    self._write_grid_information = Controller._write_grid_information
-    self._read_grid_information = Controller._read_grid_information
-    self._get_proxies = Controller._get_proxies
-    self._get_generator_to_enable = Controller._get_generator_to_enable
-    self._get_generator_to_disable = Controller._get_generator_to_disable
-    self._running_ema = Controller._running_ema
+    self._collect_grid_information = Control._collect_grid_information
+    self._write_grid_information = Control._write_grid_information
+    self._read_grid_information = Control._read_grid_information
+    self._get_proxies = Control._get_proxies
+    self._get_generator_to_enable = Control._get_generator_to_enable
+    self._get_generator_to_disable = Control._get_generator_to_disable
+    self._running_ema = Control._running_ema
 
     return self
 end
 
-Controller.start = function(self)
+Control.start = function(self)
     self:_read_grid_information()
     self:_get_proxies()
 
@@ -46,28 +46,28 @@ Controller.start = function(self)
     }
 end
 
-Controller.wait = function(self)
+Control.wait = function(self)
     thread.waitForAll(table.values(self.threads))
 end
 
-Controller.stop = function(self)
+Control.stop = function(self)
     self.should_stop = true
     self:wait()
 end
 
-Controller.stop_on = function(self, e)
+Control.stop_on = function(self, e)
     event.listen(e, function()
         self:stop()
     end)
 end
 
-Controller.collect_grid_information = function(self)
+Control.collect_grid_information = function(self)
     self:_get_proxies()
     self:_collect_grid_information()
     self:_write_grid_information()
 end
 
-Controller._monitor_th_f = function(self)
+Control._monitor_th_f = function(self)
     local stats = {}
     stats.average_delta = 0
 
@@ -113,7 +113,7 @@ Controller._monitor_th_f = function(self)
     end
 end
 
-Controller._control_th_f = function(self)
+Control._control_th_f = function(self)
     while not self.should_stop do
         os.sleep(0)
 
@@ -151,7 +151,7 @@ Controller._control_th_f = function(self)
     end
 end
 
-Controller._display_th_f = function(self)
+Control._display_th_f = function(self)
     while not self.should_stop do
         os.sleep(self.config.display_delay)
 
@@ -175,7 +175,7 @@ Controller._display_th_f = function(self)
     end
 end
 
-Controller._collect_grid_information = function(self)
+Control._collect_grid_information = function(self)
     local generators_information = table.parallel_map(self.generators, function(_, generator)
         local isWorkAllowed = generator.isWorkAllowed()
 
@@ -203,7 +203,7 @@ Controller._collect_grid_information = function(self)
     }
 end
 
-Controller._write_grid_information = function(self)
+Control._write_grid_information = function(self)
     filesystem.makeDirectory(self.config.data_dir)
 
     local path = filesystem.concat(self.config.data_dir, "grid_information")
@@ -214,7 +214,7 @@ Controller._write_grid_information = function(self)
     end
 end
 
-Controller._read_grid_information = function(self)
+Control._read_grid_information = function(self)
     local path = filesystem.concat(self.config.data_dir, "grid_information")
     local file = io.open(path, "r")
 
@@ -223,12 +223,12 @@ Controller._read_grid_information = function(self)
     end
 end
 
-Controller._get_proxies = function(self)
+Control._get_proxies = function(self)
     self.generators = lib.get_proxies("gt_machine")
     self.batteries = lib.get_proxies("gt_batterybuffer")
 end
 
-Controller._get_generator_to_enable = function(self)
+Control._get_generator_to_enable = function(self)
     local generators = table.vfilter(self.generators, function(v)
         return not v.isWorkAllowed()
     end)
@@ -250,7 +250,7 @@ Controller._get_generator_to_enable = function(self)
     end)
 end
 
-Controller._get_generator_to_disable = function(self)
+Control._get_generator_to_disable = function(self)
     local generators = table.vfilter(self.generators, function(v)
         return v.isWorkAllowed()
     end)
@@ -272,8 +272,8 @@ Controller._get_generator_to_disable = function(self)
     end)
 end
 
-Controller._running_ema = function(_, s, x, alpha)
+Control._running_ema = function(_, s, x, alpha)
     return (1 - alpha) * s + alpha * x
 end
 
-return Controller
+return Control
