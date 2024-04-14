@@ -24,6 +24,10 @@ lib.get_whole_seconds = function()
     return lib.ticks_to_whole_seconds(lib.get_ticks())
 end
 
+lib.get_proxy = function(type)
+    return component.getPrimary(type)
+end
+
 lib.get_proxies = function(filter)
     local components = table.keys(component.list(filter))
     return table.vmap(components, component.proxy)
@@ -145,6 +149,8 @@ lib.get_generator_information = function(generator)
     local information = lib.get_generator_sensor_information(generator)
 
     information.address = generator.address
+    information.enabled = generator.isWorkAllowed()
+    information.running = generator.hasWork()
 
     return information
 end

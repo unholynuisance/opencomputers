@@ -3,9 +3,9 @@ local table = require("nuisance.table")
 
 local thread = require("thread")
 local event = require("event")
-local term = require("term")
 local serialization = require("serialization")
 local filesystem = require("filesystem")
+local udp = require("network").udp
 
 local Controller = {}
 Controller.create = function(config)
@@ -117,7 +117,7 @@ Controller._control_th_f = function(self)
     while not self.should_stop do
         os.sleep(0)
 
-        if self.stats == nil then
+        if not self.stats then
             goto continue
         end
 
@@ -127,7 +127,7 @@ Controller._control_th_f = function(self)
 
         if 0 <= tte_mo and tte_mo < min_tte_mo then
             local generator = self:_get_generator_to_enable()
-            if generator ~= nil then
+            if generator then
                 local generator_name = self.generators_information[generator.address].name
                 self.control_th_message = string.format("Starting %s", generator_name)
                 generator.setWorkAllowed(true)
@@ -139,7 +139,7 @@ Controller._control_th_f = function(self)
 
         if 0 <= ttf and ttf < min_ttf and self.stats.average_delta > 0 then
             local generator = self:_get_generator_to_disable()
-            if generator ~= nil then
+            if generator then
                 local generator_name = self.generators_information[generator.address].name
                 self.control_th_message = string.format("Stopping %s", generator_name)
                 generator.setWorkAllowed(false)
@@ -153,34 +153,23 @@ end
 
 Controller._display_th_f = function(self)
     while not self.should_stop do
-        os.sleep(0)
+        os.sleep(self.config.display_delay)
 
-        if self.stats == nil then
+        if not self.stats then
             goto continue
         end
 
-        term.clear()
+        local data = serialization.serialize({
+            generators = self.generators,
+            batteries = self.batteries,
+            grid_information = self.grid_information,
+            generators_information = self.generators_information,
+            batteries_information = self.batteries_information,
+            stats = self.stats,
+            control_th_message = self.control_th_message,
+        })
 
-        print("Stats:")
-        print(string.format("Energy: %f", self.stats.batteries_energy))
-        print(string.format("Delta: %f", self.stats.delta))
-        print(string.format("Average: %f", self.stats.average_delta))
-        print(string.format("Time to full: %f", self.stats.time_to_full))
-        print(string.format("Time to empty: %f", self.stats.time_to_empty))
-
-        print("")
-
-        print("Grid status:")
-        for i, generator in ipairs(self.generators) do
-            local generator_name = self.generators_information[generator.address].name
-            local generator_status = generator.isWorkAllowed() and "enabled" or "disabled"
-            print(string.format("%i. %s (%s)", i, generator_name, generator_status))
-        end
-
-        print("")
-
-        print("Status:")
-        print(self.control_th_message or "Idle")
+        udp.send(self.config.display_address, self.config.display_port, data)
 
         ::continue::
     end
