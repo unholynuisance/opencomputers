@@ -78,7 +78,7 @@ Control._monitor_th_f = function(self)
     stats.average_delta = 0
 
     while not self.should_stop do
-        os.sleep(0)
+        os.sleep(self.config.monitor_delay)
 
         local generators_information = lib.get_generators_information(self.generators)
         local batteries_information = lib.get_batteries_information(self.batteries)
@@ -121,7 +121,7 @@ end
 
 Control._control_th_f = function(self)
     while not self.should_stop do
-        os.sleep(0)
+        os.sleep(self.config.control_delay)
 
         if not self.stats then
             goto continue
