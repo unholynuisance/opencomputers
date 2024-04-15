@@ -158,6 +158,14 @@ Control._control_th_f = function(self)
 end
 
 Control._display_th_f = function(self)
+    local generators = table.vmap(self.generators, function(generator)
+        return { address = generator.address }
+    end)
+
+    local batteries = table.vmap(self.generators, function(generator)
+        return { address = generator.address }
+    end)
+
     while not self.should_stop do
         os.sleep(self.config.display_delay)
 
@@ -166,9 +174,8 @@ Control._display_th_f = function(self)
         end
 
         local data = serialization.serialize({
-            generators = self.generators,
-            batteries = self.batteries,
-            grid_information = self.grid_information,
+            generators = generators,
+            batteries = batteries,
             generators_information = self.generators_information,
             batteries_information = self.batteries_information,
             stats = self.stats,
