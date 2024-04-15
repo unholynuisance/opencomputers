@@ -57,9 +57,7 @@ end
 
 Display._monitor_th_f = function(self)
     while not self.should_stop do
-        os.sleep(0)
-
-        local e, _, _, data = event.pullFiltered(function(...)
+        local e, _, _, data = event.pullFiltered(self.config.monitor_timeout, function(...)
             local name = select(1, ...)
             local port = select(3, ...)
             return name == "datagram" and port == self.config.port
@@ -73,7 +71,7 @@ end
 
 Display._display_th_f = function(self)
     while not self.should_stop do
-        os.sleep(0)
+        os.sleep(self.config.display_delay)
 
         term.clear()
 
