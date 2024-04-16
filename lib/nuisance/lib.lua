@@ -8,6 +8,8 @@ local filesystem = require("filesystem")
 local lib = {}
 
 lib.write_file = function(path, contents)
+    filesystem.makeDirectory(filesystem.path(path))
+
     local file = io.open(path, "w")
     return file and file:write(contents) or error("Could not open file for writing")
 end
@@ -17,10 +19,18 @@ lib.read_file = function(path)
     return file and file:read("*a") or error("Could not open file for reading")
 end
 
+lib.write_table = function(path, t)
+    local contents = serialization.serialize(t)
+    return lib.write_file(path, contents)
+end
+
+lib.read_table = function(path)
+    local contents = lib.read_file(path)
+    return serialization.unserialize(contents)
+end
+
 lib.write_config = function(config, filename, dir)
     dir = dir or "/etc"
-
-    filesystem.makeDirectory(dir)
 
     local path = filesystem.concat(dir, filename)
     local contents = serialization.serialize(config)
