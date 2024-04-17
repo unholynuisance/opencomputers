@@ -12,6 +12,6 @@ if opts["regenerate-fluid-database"] or opts["r"] then
 end
 
 control:stop_on("interrupted")
-control:detach()
 control:start()
+control:detach()
 control:wait()
