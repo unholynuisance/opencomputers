@@ -73,26 +73,31 @@ table.vfilter = function(t, fn)
     end)
 end
 
-table.reduce = function(t, fn, init)
-    local acc = init
+table.reduce = function(t, fn, kinit, vinit)
+    local kacc = kinit
+    local vacc = vinit
 
     for k, v in pairs(t) do
-        acc = fn(acc, k, v)
+        kacc, vacc = fn(kacc, vacc, k, v)
     end
+
+    return kacc, vacc
+end
+
+table.kreduce = function(t, fn, init)
+    local acc, _ = table.reduce(t, function(acc, _, k, _)
+        return fn(acc, k), nil
+    end, init, nil)
 
     return acc
 end
 
-table.kreduce = function(t, fn, init)
-    return table.reduce(t, function(acc, k, _)
-        return fn(acc, k)
-    end, init)
-end
-
 table.vreduce = function(t, fn, init)
-    return table.reduce(t, function(acc, _, v)
-        return fn(acc, v)
-    end, init)
+    local _, acc = table.reduce(t, function(_, acc, _, v)
+        return nil, fn(acc, v)
+    end, nil, init)
+
+    return acc
 end
 
 table.vsum = function(t)
