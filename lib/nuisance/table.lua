@@ -5,7 +5,9 @@ table.parallel_map = function(t, fn)
 
     local worker = function(k, v)
         k, v = fn(k, v)
-        result[k] = v
+        if k then
+            result[k] = v
+        end
     end
 
     local threads = table.values(table.map(t, function(k, v)
@@ -33,7 +35,9 @@ table.map = function(t, fn)
 
     for k, v in pairs(t) do
         k, v = fn(k, v)
-        result[k] = v
+        if k then
+            result[k] = v
+        end
     end
 
     return result
@@ -53,11 +57,7 @@ end
 
 table.filter = function(t, fn)
     return table.map(t, function(k, v)
-        if fn(k, v) then
-            return k, v
-        else
-            return k, nil
-        end
+        return fn(k, v) and k, v or nil, nil
     end)
 end
 
