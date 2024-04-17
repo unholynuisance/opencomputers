@@ -247,7 +247,7 @@ Control._get_generator_to_enable = function(self)
     end)
 
     -- return generator with max priority and max ramp_rate
-    return table.max(generators, function(a, b)
+    return table.vmax(generators, function(a, b)
         local a_info = self.grid_information.generators_information[a.address]
         local b_info = self.grid_information.generators_information[b.address]
 
@@ -269,7 +269,7 @@ Control._get_generator_to_disable = function(self)
     end)
 
     -- return generator with min priority and max ramp_rate
-    return table.min(generators, function(a, b)
+    return table.vmin(generators, function(a, b)
         local a_info = self.grid_information.generators_information[a.address]
         local b_info = self.grid_information.generators_information[b.address]
 

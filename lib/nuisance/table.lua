@@ -107,6 +107,16 @@ table.vsum = function(t)
 end
 
 table.min = function(t, comp)
+    return table.reduce(t, function(kacc, vacc, k, v)
+        if (kacc ~= nil or vacc ~= nil) and comp(kacc, vacc, k, v) then
+            return kacc, vacc
+        else
+            return k, v
+        end
+    end)
+end
+
+table.vmin = function(t, comp)
     return table.vreduce(t, function(acc, v)
         if acc ~= nil and comp(acc, v) then
             return acc
@@ -117,6 +127,16 @@ table.min = function(t, comp)
 end
 
 table.max = function(t, comp)
+    return table.reduce(t, function(kacc, vacc, k, v)
+        if (kacc ~= nil or vacc ~= nil) and comp(k, v, kacc, vacc) then
+            return kacc, vacc
+        else
+            return k, v
+        end
+    end)
+end
+
+table.vmax = function(t, comp)
     return table.vreduce(t, function(acc, v)
         if acc ~= nil and comp(v, acc) then
             return acc
